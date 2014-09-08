@@ -271,13 +271,15 @@
       }
 
       function test_q_fns() {
-        var res = d.q('[:find ?e \
-                        :in    $ ?adult \
-                        :where [?e "age" ?a] \
-                               [(?adult ?a)]]',
-                      people_db,
-                      function(a) { return a > 18; });
-        assert_eq_set([[2], [3]], res);
+        d.q('[:find ?e \
+              :in    $ ?adult \
+              :where [?e "age" ?a] \
+                     [(?adult ?a)]]',
+            function( result ) {
+              assert_eq_set([[2], [3]], result);
+            },
+            people_db,
+            function(a) { return a > 18; });
       }
 
       function test_datoms() {
@@ -302,7 +304,7 @@
                           // test_entity_refs,
                           // test_q_relation,
                           // test_q_rules,
-                          // test_q_fns,
+                          test_q_fns,
                           // test_datoms
                         ]);
       }
