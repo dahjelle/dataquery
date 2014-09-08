@@ -433,29 +433,29 @@
                              rel))))))))
         rel))))
 
-(defn -resolve-clause [context clause]
+(defn -resolve-clause [context clause callback]
   (condp looks-like? clause
     '[[*]] ;; predicate [(pred ?a ?b ?c)]
-      (filter-by-pred context clause)
+      (callback (filter-by-pred context clause))
 
     '[[*] _] ;; function [(fn ?a ?b) ?res]
-      (bind-by-fn context clause)
+      (callback (bind-by-fn context clause))
 
     '[*] ;; pattern
-      (let [relation (lookup-pattern context clause)]
-        (update-in context [:rels] collapse-rels relation))))
+      (callback (let [relation (lookup-pattern context clause)]
+        (update-in context [:rels] collapse-rels relation)))))
 
 ;TODO not really sure it is valid to replace all these context's with @context's, but it seems to work
 (defn resolve-clause [context clause callback]
-  (callback
-    (if (rule? @context clause)
-      (let [[source rule] (if (source? (first clause))
-                            [(first clause) (next clause)]
-                            ['$ clause])
-            source (get-in @context [:sources source])
-            rel    (solve-rule (assoc @context :sources {'$ source}) rule)]
-        (update-in @context [:rels] collapse-rels rel))
-      (-resolve-clause @context clause))))
+  (if (rule? @context clause)
+    (let [[source rule] (if (source? (first clause))
+                          [(first clause) (next clause)]
+                          ['$ clause])
+          source (get-in @context [:sources source])
+          rel    (solve-rule (assoc @context :sources {'$ source}) rule)]
+
+      (callback (update-in @context [:rels] collapse-rels rel)))
+    (-resolve-clause @context clause callback)))
 
 (defn -q [context clauses callback]
   (async-reduce resolve-clause context clauses callback))
