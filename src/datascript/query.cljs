@@ -18,6 +18,15 @@
 
 
 ;; Utilities
+(defn async-reduce [reducer-function initial-value collection callback]
+  (let [accumulator (atom initial-value)
+        items-processed (atom 0)]
+    (doseq [item collection]
+      (reducer-function accumulator item (fn [result]
+                                            (swap! accumulator (fn [] result)) ; cheating a bit in the update function
+                                            (swap! items-processed inc)
+                                            (if (= @items-processed (count collection))
+                                              (callback @accumulator)))))))
 
 (defn intersect-keys [attrs1 attrs2]
   (set/intersection (set (keys attrs1))
@@ -436,18 +445,20 @@
       (let [relation (lookup-pattern context clause)]
         (update-in context [:rels] collapse-rels relation))))
 
-(defn resolve-clause [context clause]
-  (if (rule? context clause)
-    (let [[source rule] (if (source? (first clause))
-                          [(first clause) (next clause)]
-                          ['$ clause])
-          source (get-in context [:sources source])
-          rel    (solve-rule (assoc context :sources {'$ source}) rule)]
-      (update-in context [:rels] collapse-rels rel))
-    (-resolve-clause context clause)))
+;TODO not really sure it is valid to replace all these context's with @context's, but it seems to work
+(defn resolve-clause [context clause callback]
+  (callback
+    (if (rule? @context clause)
+      (let [[source rule] (if (source? (first clause))
+                            [(first clause) (next clause)]
+                            ['$ clause])
+            source (get-in @context [:sources source])
+            rel    (solve-rule (assoc @context :sources {'$ source}) rule)]
+        (update-in @context [:rels] collapse-rels rel))
+      (-resolve-clause @context clause))))
 
 (defn -q [context clauses callback]
-  (callback (reduce resolve-clause context clauses)))
+  (async-reduce resolve-clause context clauses callback))
 
 (defn -collect
   ([context symbols]
