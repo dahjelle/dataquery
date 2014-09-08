@@ -16,7 +16,7 @@
 
 (defn empty-db [& [schema]]
   (dc/DB. schema
-       (btset/btset-by dc/cmp-datoms-eavt) 
+       (btset/btset-by dc/cmp-datoms-eavt)
        (btset/btset-by dc/cmp-datoms-aevt)
        (btset/btset-by dc/cmp-datoms-avet)
        0
@@ -45,7 +45,7 @@
     (doseq [[_ callback] @(:listeners (meta conn))]
       (callback report))
     report))
-           
+
 (defn listen!
   ([conn callback] (listen! conn (rand) callback))
   ([conn key callback]

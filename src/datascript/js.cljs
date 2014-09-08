@@ -79,7 +79,7 @@
 
 (defn ^:export resolve_tempid [tempids tempid]
   (aget tempids (str tempid)))
-  
+
 (defn ^:export datoms [db index & components]
   (->> (apply d/datoms db (keywordize index) components)
        into-array))

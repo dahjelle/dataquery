@@ -17,7 +17,7 @@
            (unsigned-bit-shift-right path level)))
 
 (defn path-set [path level idx]
-  (bit-or path 
+  (bit-or path
           (bit-shift-left idx level)))
 
 (defn eq [a b]
@@ -124,7 +124,7 @@
     arr
     (splice arr from to new-arr)))
 
-;; 
+;;
 
 (defn lim-key [node]
   (aget (.-keys node) (dec (alength (.-keys node)))))
@@ -168,11 +168,11 @@
   Object
   (len [_]
     (alength keys))
-  
+
   (merge [_ next]
     (Node. (.concat keys (.-keys next))
            (.concat pointers (.-pointers next))))
-  
+
   (merge-n-split [_ next]
     (let [ks (merge-n-split keys (.-keys next))
           ps (merge-n-split pointers (.-pointers next))]
@@ -183,7 +183,7 @@
     (let [idx (lookup-range keys key)]
       (when-not (== -1 idx)
         (.lookup (aget pointers idx) key))))
-  
+
   (conj [this key]
     (let [idx   (binary-search-l keys 0 (- (alength keys) 2) key)
           nodes (.conj (aget pointers idx) key)]
@@ -217,18 +217,18 @@
 (deftype LeafNode [keys]
   Object
   (toString [_] (pr-str* (vec keys)))
-  
+
   (len [_]
     (alength keys))
-  
+
   (merge [_ next]
     (LeafNode. (.concat keys (.-keys next))))
-  
+
   (merge-n-split [_ next]
     (let [ks (merge-n-split keys (.-keys next))]
       (return-array (LeafNode. (aget ks 0))
                     (LeafNode. (aget ks 1)))))
-  
+
   (lookup [_ key]
     (let [idx (lookup-exact keys key)]
       (when-not (== -1 idx)
@@ -242,7 +242,7 @@
         (and (< idx keys-l)
              (eq key (aget keys idx)))
           nil
-      
+
         ;; splitting
         (== keys-l max-len)
           (let [middle (half (inc keys-l))]
@@ -253,11 +253,11 @@
               ;; new key goes to the first half
               #js [(LeafNode. (cut-n-splice keys 0 middle idx idx #js [key]))
                    (LeafNode. (cut keys middle keys-l))]))
-       
+
         ;; ok as is
         :else
           #js [(LeafNode. (splice keys idx idx #js [key]))])))
-  
+
   (disj [this key root? left right]
     (let [idx (lookup-exact keys key)]
       (when-not (== -1 idx) ;; key is here
@@ -280,14 +280,14 @@
         ;; tree not changed
         (nil? roots)
           set
-       
+
         ;; keeping single root
         (== (alength roots) 1)
           (alter-btset set
             (aget roots 0)
             (.-shift set)
             (inc (.-cnt set)))
-       
+
         ;; introducing new root
         :else
           (alter-btset set
@@ -303,13 +303,13 @@
         (let [new-root (aget new-roots 0)]
           (if (and (instance? Node new-root)
                    (== (alength (.-pointers new-root)) 1))
-            
+
             ;; root has one child, make him new root
             (alter-btset set
               (aget (.-pointers new-root) 0)
               (- (.-shift set) level-shift)
               (dec (.-cnt set)))
-            
+
             ;; keeping root level
             (alter-btset set
               new-root
@@ -347,16 +347,16 @@
   ISeqable
   (-seq [this]
     (when keys this))
-  
+
   ISeq
   (-first [_]
     (when keys (aget keys idx)))
-  
+
   (-rest [this]
     (if-let [next (-next this)]
       next
       (BTSetIter. set -1 till-path nil -1)))
-  
+
   INext
   (-next [_]
     (if (< (inc idx) (alength keys))
@@ -419,7 +419,7 @@
   Object
   (toString [this]
     (pr-str* this))
-  
+
   ICloneable
   (-clone [_] (BTSet. root shift cnt comparator meta __hash))
 
@@ -428,10 +428,10 @@
 
   IMeta
   (-meta [_] meta)
- 
+
   IEmptyableCollection
   (-empty [_] (BTSet. (LeafNode. (array)) 0 0 comparator meta 0))
-  
+
   IEquiv
   (-equiv [this other]
     (and
@@ -441,15 +441,15 @@
 
   IHash
   (-hash [coll] (caching-hash coll hash-iset __hash))
-   
+
   ICollection
   (-conj [set key] (btset-conj set key))
 
   ISet
   (-disjoin [set key]
     (btset-disj set key))
-  
-  ILookup 
+
+  ILookup
   (-lookup [set k]
     (-lookup set k nil))
   (-lookup [_ k not-found]
@@ -459,16 +459,16 @@
   ISeqable
   (-seq [this]
     (btset-iter this))
-  
+
   ICounted
   (-count [_] cnt)
- 
+
   IFn
   (-invoke [coll k]
     (-lookup coll k))
   (-invoke [coll k not-found]
     (-lookup coll k not-found))
-  
+
   IPrintWithWriter
   (-pr-writer [this writer opts]
     (pr-sequential-writer writer pr-writer "#{" " " "}" opts (seq this))))

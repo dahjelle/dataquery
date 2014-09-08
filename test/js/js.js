@@ -9,6 +9,6 @@ page.open('test/js/js.html', function (status) {
     var result = page.evaluate(function() {
         return run_tests();
     });
-  
+
     phantom.exit(result);
 });

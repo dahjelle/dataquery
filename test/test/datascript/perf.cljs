@@ -58,7 +58,7 @@
       (for [[key-name key-value] (if (map? name+values)
                                    name+values
                                    (map #(vector % %) name+values))
-            result (-suite f 
+            result (-suite f
                      (-> opts
                        (assoc :matrix rest-matrix)
                        (assoc key key-value)

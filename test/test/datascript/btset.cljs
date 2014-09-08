@@ -39,7 +39,7 @@
                                (count xs) "adds" (str "(" (count xs-sorted) " distinct),")
                                (count rm) "removals" (str "(down to " (count xs-rm) ")"))
             set0      (into (btset) xs)
-            
+
             set1      (reduce disj set0 rm)]
         (testing xs
           (testing "conj, seq"

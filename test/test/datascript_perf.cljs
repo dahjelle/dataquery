@@ -78,7 +78,7 @@
 
 (def test-matrix-q [
   :test   ["q"]
-  :method { 
+  :method {
 ;;     "q-scan"        (fn [opts] (d/q (concat '[:find ?e :where]
 ;;                                              (get-in opts [:lookup :q]))
 ;;                                     (:db opts)))
@@ -106,7 +106,7 @@
                            (sort-merge-join (:db opts) es :age)))
 
 
-                                 
+
 ;;     "filter"        (fn [opts] (->> (:people opts)
 ;;                                     (filterv (get-in opts [:lookup :filter]))))
 ;;     "filter-set"    (fn [opts] (->> (:people opts)
@@ -137,7 +137,7 @@
 ;;                                   (= (:age %) 5)
 ;;                                   (= (:sex %) :male)) }
   }
-                    
+
   :size   [2000] ;; [100 500 2000 20000]
 ])
 

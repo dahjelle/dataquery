@@ -55,7 +55,7 @@
     (pr-str* this))
   (equiv [this other]
     (-equiv this other))
-  
+
   ;; js/map interface
   (keys [this]
     (iterator (keys this)))
@@ -81,7 +81,7 @@
   (forEach [this f use-as-this]
     (doseq [[a v] (js-seq this)]
       (.call f use-as-this v a this)))
-  
+
   ;; js fallbacks
   (key_set   [this] (to-array (keys this)))
   (entry_set [this] (to-array (map to-array (js-seq this))))
@@ -93,21 +93,21 @@
       (instance? Entity o)
       ;; (= db  (.-db o))
       (= eid (.-eid o))))
-  
+
   IHash
   (-hash [_]
     (hash eid)) ;; db?
-  
+
   ISeqable
   (-seq [this]
     (touch this)
     (seq cache))
-  
+
   ICounted
   (-count [this]
     (touch this)
     (count cache))
- 
+
   ILookup
   (-lookup [this attr]
     (-lookup this attr nil))
