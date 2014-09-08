@@ -45,12 +45,13 @@
 (defn ^:export empty_db [& [schema]]
   (d/empty-db (schema->clj schema)))
 
-(defn ^:export q [query & sources]
+(defn ^:export q [query callback & sources]
   (let [query   (cljs.reader/read-string query)
-        results (apply d/q query sources)]
-    (->> (for [tuple results]
-           (into-array tuple))
-         (into-array))))
+        results (apply d/q query (fn [results]
+                                    (->> (for [tuple results]
+                                          (into-array tuple))
+                                        (into-array)
+                                        (callback))) sources)]))
 
 (defn ^:export db_with [db entities]
   (d/db-with db (entities->clj entities)))

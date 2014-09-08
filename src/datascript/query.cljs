@@ -513,7 +513,7 @@
         (recur (update-in parsed [key] (fnil conj []) q) key (next qs)))
       parsed)))
 
-(defn q [q & inputs]
+(defn q [q callback & inputs]
   (let [q         (if (sequential? q) (parse-query q) q)
         find      (find-attrs q)
         ins       (:in q '[$])
@@ -523,8 +523,9 @@
         resultset (-> context
                     (-q wheres)
                     (collect find))]
-    (cond->> resultset
-      (:with q)
-        (mapv #(subvec % 0 (count (:find q))))
-      (not-empty (filter sequential? (:find q)))
-        (aggregate q context))))
+    (callback
+      (cond->> resultset
+        (:with q)
+          (mapv #(subvec % 0 (count (:find q))))
+        (not-empty (filter sequential? (:find q)))
+          (aggregate q context)))))
