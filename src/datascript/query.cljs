@@ -446,8 +446,8 @@
       (update-in context [:rels] collapse-rels rel))
     (-resolve-clause context clause)))
 
-(defn -q [context clauses]
-  (reduce resolve-clause context clauses))
+(defn -q [context clauses callback]
+  (callback (reduce resolve-clause context clauses)))
 
 (defn -collect
   ([context symbols]
@@ -519,13 +519,12 @@
         ins       (:in q '[$])
         wheres    (:where q)
         context   (-> (Context. [] {} {})
-                    (parse-ins ins inputs))
-        resultset (-> context
-                    (-q wheres)
-                    (collect find))]
-    (callback
-      (cond->> resultset
-        (:with q)
-          (mapv #(subvec % 0 (count (:find q))))
-        (not-empty (filter sequential? (:find q)))
-          (aggregate q context)))))
+                        (parse-ins ins inputs))]
+        (-q context wheres (fn [data]
+                             (callback
+                               (let [resultset (collect data find)]
+                                 (cond->> resultset
+                                   (:with q)
+                                     (mapv #(subvec % 0 (count (:find q))))
+                                   (not-empty (filter sequential? (:find q)))
+                                     (aggregate q context))))))))
