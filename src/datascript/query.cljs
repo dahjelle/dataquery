@@ -377,7 +377,7 @@
     [(filter pred guards)
      (remove pred guards)]))
 
-(defn solve-rule [context clause]
+(defn solve-rule [context clause callback]
   (let [final-attrs     (filter free-var? clause)
         final-attrs-map (zipmap final-attrs (range))
 ;;         clause-cache    (atom {}) ;; TODO
@@ -385,6 +385,7 @@
                           (reduce -resolve-clause prefix-context clauses))
         empty-rels?     (fn [context]
                           (some #(empty? (:tuples %)) (:rels context)))]
+    (callback
     (loop [stack (list {:prefix-clauses []
                         :prefix-context (assoc context :rels [])
                         :clauses        [clause]
@@ -431,7 +432,7 @@
                                   :pending-guards pending-gs})
                                (next stack))
                              rel))))))))
-        rel))))
+        rel)))))
 
 (defn -resolve-clause [context clause callback]
   (condp looks-like? clause
@@ -451,10 +452,9 @@
     (let [[source rule] (if (source? (first clause))
                           [(first clause) (next clause)]
                           ['$ clause])
-          source (get-in @context [:sources source])
-          rel    (solve-rule (assoc @context :sources {'$ source}) rule)]
-
-      (callback (update-in @context [:rels] collapse-rels rel)))
+          source (get-in @context [:sources source])]
+      (solve-rule (assoc @context :sources {'$ source}) rule (fn [rel]
+        (callback (update-in @context [:rels] collapse-rels rel)))))
     (-resolve-clause @context clause callback)))
 
 (defn -q [context clauses callback]
