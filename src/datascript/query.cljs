@@ -257,16 +257,16 @@
                         (into {}))]
     (Relation. attr->idx (map to-array data)))) ;; FIXME to-array
 
-(defn lookup-pattern [context clause]
+(defn lookup-pattern [context clause callback]
   (let [[source-sym pattern] (if (source? (first clause))
                                [(first clause) (next clause)]
                                ['$ clause])
         source   (get (:sources context) source-sym)]
-    (cond
+    (callback (cond
       (instance? dc/DB source)
         (lookup-pattern-db source pattern)
       :else
-        (lookup-pattern-coll source pattern))))
+        (lookup-pattern-coll source pattern)))))
 
 (defn collapse-rels [rels new-rel]
   (loop [rels    rels
@@ -445,8 +445,9 @@
       (callback (bind-by-fn context clause))
 
     '[*] ;; pattern
-      (callback (let [relation (lookup-pattern context clause)]
-        (update-in context [:rels] collapse-rels relation)))))
+      (lookup-pattern context clause (fn [datoms]
+        (callback (update-in context [:rels] collapse-rels datoms))
+        ))))
 
 ;TODO not really sure it is valid to replace all these context's with @context's, but it seems to work
 (defn resolve-clause [context clause callback]
