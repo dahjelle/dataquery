@@ -241,18 +241,22 @@
                         :in    $ $b \
                         :where [?e "name" ?n] \
                                [$b ?n ?email]]',
-                      people_db,
+                    function( res ) {
+                      assert_eq_set([[1, "ivan@mail.ru"], [2, "petr@gmail.com"], [3, "ivan@mail.ru"]], res);
+                    },
+                    people_db,
                     [["Ivan", "ivan@mail.ru"],
                      ["Petr", "petr@gmail.com"]]);
-        assert_eq_set([[1, "ivan@mail.ru"], [2, "petr@gmail.com"], [3, "ivan@mail.ru"]], res);
 
         res     = d.q('[:find ?e ?email \
                         :in    $ [[?n ?email]] \
                         :where [?e "name" ?n]]',
-                      people_db,
+                    function( res ) {
+                      assert_eq_set([[1, "ivan@mail.ru"], [2, "petr@gmail.com"], [3, "ivan@mail.ru"]], res);
+                    },
+                    people_db,
                     [["Ivan", "ivan@mail.ru"],
                      ["Petr", "petr@gmail.com"]]);
-        assert_eq_set([[1, "ivan@mail.ru"], [2, "petr@gmail.com"], [3, "ivan@mail.ru"]], res);
       }
 
       function test_q_rules() {
@@ -302,7 +306,7 @@
                           // test_tx_report,
                           // test_entity,
                           // test_entity_refs,
-                          // test_q_relation,
+                          test_q_relation,
                           // test_q_rules,
                           test_q_fns,
                           // test_datoms
