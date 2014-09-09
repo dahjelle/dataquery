@@ -18,6 +18,8 @@
 
 
 ;; Utilities
+(enable-console-print!)
+
 (defn async-reduce [reducer-function initial-value collection callback]
   (let [accumulator (atom initial-value)
         items-processed (atom 0)]
@@ -380,27 +382,20 @@
 (defn solve-rule [context clause callback]
   (let [final-attrs     (filter free-var? clause)
         final-attrs-map (zipmap final-attrs (range))
-;;         clause-cache    (atom {}) ;; TODO
-        solve           (fn [prefix-context clauses]
-                          (reduce -resolve-clause prefix-context clauses))
+        solve           (fn [prefix-context clauses callback]
+                          (async-reduce -resolve-clause prefix-context clauses callback))
         empty-rels?     (fn [context]
                           (some #(empty? (:tuples %)) (:rels context)))]
-    (callback
-    (loop [stack (list {:prefix-clauses []
-                        :prefix-context (assoc context :rels [])
-                        :clauses        [clause]
-                        :used-args      {}
-                        :pending-guards {}})
-           rel   (Relation. final-attrs-map [])]
+    ((defn looper [stack rel callback] ; looper is a terrible name, but replacing the use of recur so can use callbacks
       (if-let [frame (first stack)]
         (let [[clauses [rule-clause & next-clauses]] (split-with #(not (rule? context %)) (:clauses frame))]
           (if (nil? rule-clause)
 
             ;; no rules --> expand, collect, sum
-            (let [context (solve (:prefix-context frame) clauses)
-                  tuples  (-collect context final-attrs)
-                  new-rel (Relation. final-attrs-map tuples)]
-              (recur (next stack) (sum-rel rel new-rel)))
+            (solve (:prefix-context frame) clauses (fn [context]
+               (let [tuples  (-collect context final-attrs)
+                     new-rel (Relation. final-attrs-map tuples)]
+                 (looper (next stack) (sum-rel rel new-rel) callback))))
 
             ;; has rule --> add guards --> check if dead --> expand rule --> push to stack, recur
             (let [[rule & call-args]     rule-clause
@@ -410,29 +405,36 @@
               (if (some #(= % '[(-differ?)]) active-gs) ;; trivial always false case like [(not= [?a ?b] [?a ?b])]
 
                 ;; this branch has no data, just drop it from stack
-                (recur (next stack) rel)
+                (looper (next stack) rel callback)
 
-                (let [prefix-clauses (concat clauses active-gs)
-                      prefix-context (solve (:prefix-context frame) prefix-clauses)]
-                  (if (empty-rels? prefix-context)
+                (let [prefix-clauses (concat clauses active-gs)]
+                  (solve (:prefix-context frame) prefix-clauses (fn [prefix-context]
+                    (if (empty-rels? prefix-context)
 
-                    ;; this branch has no data, just drop it from stack
-                    (recur (next stack) rel)
+                      ;; this branch has no data, just drop it from stack
+                      (looper (next stack) rel callback)
 
-                    ;; need to expand rule to branches
-                    (let [used-args  (assoc (:used-args frame) rule
-                                       (conj (get (:used-args frame) rule []) call-args))
-                          branches   (expand-rule rule-clause context used-args)]
-                      (recur (concat
-                               (for [branch branches]
-                                 {:prefix-clauses prefix-clauses
-                                  :prefix-context prefix-context
-                                  :clauses        (concatv branch next-clauses)
-                                  :used-args      used-args
-                                  :pending-guards pending-gs})
-                               (next stack))
-                             rel))))))))
-        rel)))))
+                      ;; need to expand rule to branches
+                      (let [used-args  (assoc (:used-args frame) rule
+                                         (conj (get (:used-args frame) rule []) call-args))
+                            branches   (expand-rule rule-clause context used-args)]
+                        (looper (concat
+                                 (for [branch branches]
+                                   {:prefix-clauses prefix-clauses
+                                    :prefix-context prefix-context
+                                    :clauses        (concatv branch next-clauses)
+                                    :used-args      used-args
+                                    :pending-guards pending-gs})
+                                 (next stack))
+                               rel callback))))))))))
+        (callback rel)))
+      (list {:prefix-clauses []
+                              :prefix-context (assoc context :rels [])
+                              :clauses        [clause]
+                              :used-args      {}
+                              :pending-guards {}})
+      (Relation. final-attrs-map [])
+      callback)))
 
 (defn -resolve-clause [context clause callback]
   (condp looks-like? clause

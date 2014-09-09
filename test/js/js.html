@@ -74,6 +74,7 @@
       function test_fns(fns) {
         for(var i in fns) {
           try {
+            console.group( "Start: " + fns[i].name);
             fns[i]();
             passed++;
             console.log("[ OK ] " + fns[i].name);
@@ -82,6 +83,7 @@
             errors++;
             console.error("[ FAIL ] " + fns[i].name);
           }
+          console.groupEnd();
         }
 
         console.log("Ran " + fns.length + " tests containing " + asserts + " assertions.");
@@ -264,6 +266,9 @@
                         :in    $ % \
                         :where (mate ?e1 ?e2) \
                                [(< ?e1 ?e2)]]',
+                      function( res ) {
+                        assert_eq_set([[1, 3], [2, 3]], res);
+                      },
                       people_db,
                       '[[(mate ?e1 ?e2)   \
                          [?e1 "name" ?n]  \
@@ -271,7 +276,6 @@
                         [(mate ?e1 ?e2)   \
                          [?e1 "age" ?a]   \
                          [?e2 "age" ?a]]]');
-        assert_eq_set([[1, 3], [2, 3]], res);
       }
 
       function test_q_fns() {
@@ -307,7 +311,7 @@
                           // test_entity,
                           // test_entity_refs,
                           test_q_relation,
-                          // test_q_rules,
+                          test_q_rules,
                           test_q_fns,
                           // test_datoms
                         ]);
