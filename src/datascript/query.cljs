@@ -230,14 +230,14 @@
     (Relation. (zipmap (concat keep-attrs1 keep-attrs2) (range))
                new-tuples)))
 
-(defn lookup-pattern-db [db pattern]
+(defn lookup-pattern-db [db pattern callback]
   ;; TODO optimize with bound attrs min/max values here
   (let [search-pattern (mapv #(if (symbol? %) nil %) pattern)
         datoms         (dc/-search db search-pattern)
         attr->prop     (->> (map vector pattern ["e" "a" "v" "tx"])
                             (filter (fn [[s _]] (free-var? s)))
                             (into {}))]
-    (Relation. attr->prop datoms)))
+    (callback (Relation. attr->prop datoms))))
 
 (defn matches-pattern? [pattern tuple]
   (loop [tuple   tuple
@@ -250,23 +250,23 @@
           false))
       true)))
 
-(defn lookup-pattern-coll [coll pattern]
+(defn lookup-pattern-coll [coll pattern callback]
   (let [data       (filter #(matches-pattern? pattern %) coll)
         attr->idx  (->> (map vector pattern (range))
                         (filter (fn [[s _]] (free-var? s)))
                         (into {}))]
-    (Relation. attr->idx (map to-array data)))) ;; FIXME to-array
+    (callback (Relation. attr->idx (map to-array data))))) ;; FIXME to-array
 
 (defn lookup-pattern [context clause callback]
   (let [[source-sym pattern] (if (source? (first clause))
                                [(first clause) (next clause)]
                                ['$ clause])
         source   (get (:sources context) source-sym)]
-    (callback (cond
+    (cond
       (instance? dc/DB source)
-        (lookup-pattern-db source pattern)
+        (lookup-pattern-db source pattern callback)
       :else
-        (lookup-pattern-coll source pattern)))))
+        (lookup-pattern-coll source pattern callback))))
 
 (defn collapse-rels [rels new-rel]
   (loop [rels    rels
