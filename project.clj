@@ -17,7 +17,6 @@
           :output-to     "web/datascript.min.js"
           :optimizations :advanced
           :pretty-print  false
-          :externs       ["src/datascript/externs.js"]
           :preamble      ["datascript/preamble.js"]
           :elide-asserts true
         }}
