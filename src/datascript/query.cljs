@@ -2,9 +2,7 @@
   (:require
     [clojure.set :as set]
     [clojure.walk :as walk]
-    [datascript.core :as dc]
-    [datascript.impl.entity :as de]))
-
+    [datascript.core :as dc]))
 
 ;; Records
 
@@ -93,31 +91,12 @@
   (let [l (count xs)]
     (not= (take (/ l 2) xs) (drop (/ l 2) xs))))
 
-(defn- -get-else
-  [db e a else-val]
-  (if-let [datom (first (dc/-search db [e a]))]
-    (.-v datom)
-    else-val))
-
-(defn- -get-some
-  [db e & as]
-  (reduce
-   (fn [_ a]
-     (when-let [datom (first (dc/-search db [e a]))]
-       (reduced (.-v datom))))
-   nil
-   as))
-
-(defn- -missing?
-  [db e a]
-  (nil? (get (de/entity db e) a)))
-
 (def built-ins {
   '= =, '== ==, 'not= not=, '!= not=, '< <, '> >, '<= <=, '>= >=, '+ +, '- -,
   '* *, '/ /, 'quot quot, 'rem rem, 'mod mod, 'inc inc, 'dec dec, 'max max, 'min min,
   'zero? zero?, 'pos? pos?, 'neg? neg?, 'even? even?, 'odd? odd?, 'true? true?,
   'false? false?, 'nil? nil?, 'str str, 'identity identity, 'vector vector,
-  '-differ? -differ?, 'get-else -get-else, 'get-some -get-some, 'missing? -missing?})
+  '-differ? -differ?})
 
 (def built-in-aggregates {
   'distinct (comp vec distinct)
