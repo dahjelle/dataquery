@@ -26,11 +26,12 @@
   (atom (empty-db schema)
         :meta { :listeners  (atom {}) }))
 
-(defn with [db tx-data]
-  (dc/transact-tx-data (dc/TxReport. db db [] {}) tx-data))
+(defn with [db tx-data callback]
+  (dc/transact-tx-data (dc/TxReport. db db [] {}) tx-data callback))
 
-(defn db-with [db tx-data]
-  (:db-after (with db tx-data)))
+(defn db-with [db tx-data callback]
+  (with db tx-data (fn [db]
+    (callback (:db-after db)))))
 
 (defn -transact! [conn tx-data]
   (let [report (atom nil)]

@@ -52,8 +52,8 @@
                           (into-array)
                           (callback)) sources)))
 
-(defn ^:export db_with [db entities]
-  (d/db-with db (entities->clj entities)))
+(defn ^:export db_with [db entities callback]
+  (d/db-with db (entities->clj entities) callback))
 
 (def ^:export entity    d/entity)
 (def ^:export touch     d/touch)

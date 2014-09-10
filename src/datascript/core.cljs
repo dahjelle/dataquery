@@ -28,7 +28,7 @@
 ;;;;;;;;;; Searching
 
 (defprotocol ISearch
-  (-search [data pattern]))
+  (-search [data pattern callback]))
 
 (defn cmp-val [o1 o2]
   (if (and (some? o1) (some? o2))
@@ -71,8 +71,8 @@
     (pr-str* this))
 
   ISearch
-  (-search [_ [e a v tx]]
-    (case-tree [e a (some? v) tx] [
+  (-search [_ [e a v tx] callback]
+    (callback (case-tree [e a (some? v) tx] [
       (btset/slice eavt (Datom. e a v tx nil))                 ;; e a v tx
       (btset/slice eavt (Datom. e a v nil nil))                ;; e a v _
       (->> (btset/slice eavt (Datom. e a nil nil nil))         ;; e a _ tx
@@ -94,7 +94,7 @@
       (filter #(and (= v (.-v %)) (= tx (.-tx %))) eavt) ;; _ _ v tx
       (filter #(= v (.-v %)) eavt)                       ;; _ _ v _
       (filter #(= tx (.-tx %)) eavt)                     ;; _ _ _ tx
-      eavt])))                                           ;; _ _ _ _
+      eavt]))))                                           ;; _ _ _ _
 
 (defn- equiv-index [x y]
   (and (= (count x) (count y))
@@ -146,23 +146,23 @@
        (assoc-in [:tempids e] eid)
        (update-in [:db-after] advance-max-eid eid))))
 
-(defn- with-datom [db datom]
+(defn- with-datom [db datom callback]
   (if (.-added datom)
-    (-> db
+    (callback (-> db
       (update-in [:eavt] conj datom)
       (update-in [:aevt] conj datom)
       (update-in [:avet] conj datom)
-      (advance-max-eid (.-e datom)))
-    (let [removing (first (-search db [(.-e datom) (.-a datom) (.-v datom)]))]
-      (-> db
-        (update-in [:eavt] disj removing)
-        (update-in [:aevt] disj removing)
-        (update-in [:avet] disj removing)))))
+      (advance-max-eid (.-e datom))))
+    (-search db [(.-e datom) (.-a datom) (.-v datom)] (fn [removing] (
+      (let [removing (first removing)]
+        (callback (-> db
+          (update-in [:eavt] disj removing)
+          (update-in [:aevt] disj removing)
+          (update-in [:avet] disj removing)))))))))
 
-(defn- transact-report [report datom]
-  (-> report
-      (update-in [:db-after] with-datom datom)
-      (update-in [:tx-data] conj datom)))
+(defn- transact-report [report datom callback]
+  (update-in report [:db-after] with-datom datom (fn [report]
+    (callback (update-in report [:tx-data] conj datom)))))
 
 (defn- explode [db entity]
   (let [eid (:db/id entity)]
@@ -173,27 +173,28 @@
                    vs [vs])]
       [:db/add eid a v])))
 
-(defn- transact-add [report [_ e a v]]
+(defn- transact-add [report [_ e a v] callback]
   (let [tx      (current-tx report)
         db      (:db-after report)
         datom   (Datom. e a v tx true)]
     (if (multival? db a)
-      (if (empty? (-search db [e a v]))
-        (transact-report report datom)
-        report)
-      (if-let [old-datom (first (-search db [e a]))]
-        (if (= (.-v old-datom) v)
-          report
-          (-> report
-            (transact-report (Datom. e a (.-v old-datom) tx false))
-            (transact-report datom)))
-        (transact-report report datom)))))
+      (-search db [e a v] (fn [search]
+        (if (empty? (search))
+          (transact-report report datom callback)
+          (callback report))))
+      (-search db [e a] (fn [data]
+        (if-let [old-datom (first data)]
+          (if (= (.-v old-datom) v)
+            (callback report)
+            (transact-report report (Datom. e a (.-v old-datom) tx false) (fn [report]
+              (transact-report report datom callback))))
+          (transact-report report datom callback)))))))
 
-(defn- transact-retract-datom [report d]
+(defn- transact-retract-datom [report d callback]
   (let [tx (current-tx report)]
-    (transact-report report (Datom. (.-e d) (.-a d) (.-v d) tx false))))
+    (transact-report report (Datom. (.-e d) (.-a d) (.-v d) tx false) callback)))
 
-(defn- transact-tx-data [report [entity & entities :as es]]
+(defn- transact-tx-data [report [entity & entities :as es] callback]
   (let [db (:db-after report)]
     (cond
       (nil? entity)
@@ -202,42 +203,45 @@
 
       (map? entity)
         (if (:db/id entity)
-          (recur report (concat (explode db entity) entities))
+          (recur report (concat (explode db entity) entities) callback)
           (let [eid    (next-eid db)
                 entity (assoc entity :db/id eid)]
             (recur (allocate-eid report eid)
-                   (concat [entity] entities))))
+                   (concat [entity] entities) callback)))
 
       :else
         (let [[op e a v] entity]
           (cond
             (= op :db.fn/call)
               (let [[_ f & args] entity]
-                (recur report (concat (apply f db args) entities)))
+                (recur report (concat (apply f db args) entities) callback))
 
             (neg? e)
               (if-let [eid (get-in report [:tempids e])]
-                (recur report (concat [[op eid a v]] entities))
-                (recur (allocate-eid report e (next-eid db)) es))
+                (recur report (concat [[op eid a v]] entities) callback)
+                (recur (allocate-eid report e (next-eid db)) es callback))
 
             (and (ref? db a) (neg? v))
               (if-let [vid (get-in report [:tempids v])]
-                (recur report (concat [[op e a vid]] entities))
-                (recur (allocate-eid report v (next-eid db)) es))
+                (recur report (concat [[op e a vid]] entities) callback)
+                (recur (allocate-eid report v (next-eid db)) es callback))
 
             (= op :db/add)
-              (recur (transact-add report entity) entities)
+              (transact-add report entity (fn [report]
+                (transact-tx-data report entities callback)))
 
             (= op :db/retract)
-              (if-let [old-datom (first (-search db [e a v]))]
-                (recur (transact-retract-datom report old-datom) entities)
-                (recur report entities))
+              (-search db [e a v] (fn [data]
+                (if-let [old-datom (first data)]
+                  (transact-retract-datom report old-datom (fn [report]
+                    (transact-tx-data report entities callback)))
+                  (transact-tx-data report entities callback))))
 
             (= op :db.fn/retractAttribute)
-              (let [datoms (-search db [e a])]
-                (recur (reduce transact-retract-datom report datoms) entities))
+              (-search db [e a] (fn [datoms]
+                (transact-tx-data (reduce transact-retract-datom report datoms) entities callback)))
 
             (= op :db.fn/retractEntity)
-              (let [datoms (-search db [e])]
-                (recur (reduce transact-retract-datom report datoms) entities)))))))
+              (-search db [e a] (fn [datoms]
+                (transact-tx-data (reduce transact-retract-datom report datoms) entities callback))))))))
 
