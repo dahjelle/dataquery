@@ -424,8 +424,7 @@
 
     '[*] ;; pattern
       (lookup-pattern context clause (fn [datoms]
-        (callback (update-in context [:rels] collapse-rels datoms))
-        ))))
+        (callback (update-in context [:rels] collapse-rels datoms))))))
 
 ;TODO not really sure it is valid to replace all these context's with @context's, but it seems to work
 (defn resolve-clause [context clause callback]
