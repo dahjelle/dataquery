@@ -25,12 +25,10 @@
 ;;;;;;;;;; Searching
 
 
-(defn- slice-it [index search]
-  (let [search-start search
+(defn- slice-it [index search callback]
+  (callback (let [search-start search
         search-stop  (mapv #(if (nil? %) "\uffff" %) search)]
-    (println "slice-it" index search search-start search-stop)
-    (println "slice-it" (vals (subseq index >= search-start <= search-stop)))
-    (vec (vals (subseq index >= search-start <= search-stop)))))
+    (vec (vals (subseq index >= search-start <= search-stop))))))
 
 (defprotocol ISearch
   (-search [data pattern callback]))
@@ -45,16 +43,16 @@
 
   ISearch
   (-search [_ [e a v] callback]
-    (callback (case-tree [e a (some? v)] [
-      (slice-it eav [e a v])                ;; e a v
-      (slice-it eav [e a nil])              ;; e a _
-      (->> (slice-it eav [e nil nil])       ;; e _ v
-           (filter #(= v (.-v %))))
-      (slice-it eav [e nil nil])            ;; e _ _
-      (slice-it ave [a v nil])              ;; _ a v
-      (slice-it ave [a nil nil])            ;; _ a _
-      (filter #(= v (.-v %)) eav)           ;; _ _ v
-      eav])))                               ;; _ _ _
+    (case-tree [e a (some? v)] [
+      (slice-it eav [e a v] callback)                ;; e a v
+      (slice-it eav [e a nil] callback)              ;; e a _
+      (slice-it eav [e nil nil] (fn [data]
+        (callback (filter #(= v (.-v %)) data))))    ;; e _ v
+      (slice-it eav [e nil nil] callback)            ;; e _ _
+      (slice-it ave [a v nil] callback)              ;; _ a v
+      (slice-it ave [a nil nil] callback)            ;; _ a _
+      (callback (filter #(= v (.-v %)) eav))         ;; _ _ v
+      (callback eav)]))                              ;; _ _ _
 
   Idb
   (add-record [_ e a v]
