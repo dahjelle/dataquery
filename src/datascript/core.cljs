@@ -31,9 +31,7 @@
     (vec (vals (subseq index >= search-start <= search-stop))))))
 
 (defprotocol ISearch
-  (-search [data pattern callback]))
-
-(defprotocol Idb
+  (-search [data pattern callback])
   (add-record [data e a v]))
 
 (defrecord DB [eav aev ave]
@@ -53,8 +51,6 @@
       (slice-it ave [a nil nil] callback)            ;; _ a _
       (callback (filter #(= v (.-v %)) eav))         ;; _ _ v
       (callback eav)]))                              ;; _ _ _
-
-  Idb
   (add-record [_ e a v]
     (DB.
       (assoc eav [e a v] [e a v])
