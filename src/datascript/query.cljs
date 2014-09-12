@@ -163,6 +163,12 @@
 
 ;;
 
+(defn prop->index [prop]
+  (get {"e" 0 "a" 1 "v" 2} prop))
+
+(defn get-from-tuple [tuple prop]
+  (get tuple (prop->index prop)))
+
 (defn tuple-key-fn [idxs]
   (if (== (count idxs) 1)
     (let [idx (first idxs)]
