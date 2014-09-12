@@ -218,7 +218,7 @@
 (defn lookup-pattern-db [db pattern callback]
   ;; TODO optimize with bound attrs min/max values here
   (let [search-pattern (mapv #(if (symbol? %) nil %) pattern)
-        attr->prop     (->> (map vector pattern ["e" "a" "v" "tx"])
+        attr->prop     (->> (map vector pattern ["e" "a" "v"])
                             (filter (fn [[s _]] (free-var? s)))
                             (into {}))]
     (dc/-search db search-pattern (fn [datoms] (callback (Relation. attr->prop datoms))))))
