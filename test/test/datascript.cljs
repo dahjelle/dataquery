@@ -11,18 +11,21 @@
 
 (deftest test-joins
   (let [db (-> (dc/init-db)
-               (dc/add-record 1 :name "Ivan")
-               (dc/add-record 2 :name "Petr")
-               (dc/add-record 3 :name "Ivan")
-               (dc/add-record 1 :age 15)
-               (dc/add-record 2 :age 37)
-               (dc/add-record 3 :age 37)
-               (dc/add-record 4 :age 15))]
+               (dc/add-record 1 "name" "Ivan")
+               (dc/add-record 2 "name" "Petr")
+               (dc/add-record 3 "name" "Ivan")
+               (dc/add-record 1 "age" 15)
+               (dc/add-record 2 "age" 37)
+               (dc/add-record 3 "age" 37)
+               (dc/add-record 4 "age" 15))]
     (d/q '[:find ?w
-          :where [?w :name]] (fn [result]
-                                (println "result" result)
-                                (is (= result #{[1] [2] [3]}))) db)))
-
+          :where [?w "name"]] (fn [result]
+                                (is (= result #{[1] [2] [3]}))) db)
+   (d/q '[:find  ?e ?v
+           :where [?e "name" "Ivan"]
+                  [?e "age" ?v]] (fn [result]
+                         (is (= result #{[1 15] [3 37]}))) db)
+    ))
 
 ;(deftest test-joins
 ;  (let [db (-> (d/empty-db)
