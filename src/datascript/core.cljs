@@ -49,9 +49,9 @@
       (callback "eav")]))                              ;; _ _ _
   (add-record [_ e a v]
     (DB.
-      (assoc eav (mapv str [e a v]) [e a v])
-      (assoc aev (mapv str [a e v]) [e a v])
-      (assoc ave (mapv str [a v e]) [e a v])))
+      (assoc eav (mapv str [e a v]) (to-array [e a v]))
+      (assoc aev (mapv str [a e v]) (to-array [e a v]))
+      (assoc ave (mapv str [a v e]) (to-array [e a v]))))
   (slice-it [db index search callback]
     (callback (let [search-start search
                     search-stop  (mapv #(if (nil? %) "\uffff" %) search)
