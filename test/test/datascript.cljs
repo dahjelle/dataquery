@@ -21,8 +21,8 @@
     (d/q '[:find ?w
           :where [?w "name"]] (fn [result]
                                 (is (= result #{[1] [2] [3]}))) db)
-   (d/q '[:find  ?e ?v
-           :where [?e "name" "Ivan"]
+    (d/q '[:find  ?e ?v
+          :where  [?e "name" "Ivan"]
                   [?e "age" ?v]] (fn [result]
                          (is (= result #{[1 15] [3 37]}))) db)
     ))
