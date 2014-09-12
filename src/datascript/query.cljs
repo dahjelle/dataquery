@@ -461,7 +461,7 @@
                          t2 (:tuples rel)]
                      (let [res (aclone t1)]
                        (dotimes [i len]
-                         (when-let [idx (get {"e" 0 "a" 1 "v" 2} (aget copy-map i))]
+                         (when-let [idx (prop->index (aget copy-map i))]
                            (aset res i (nth t2 idx))))
                        res))
                    (next rels)
