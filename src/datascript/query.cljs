@@ -163,12 +163,6 @@
 
 ;;
 
-(defn prop->index [prop]
-  (get {"e" 0 "a" 1 "v" 2} prop))
-
-(defn get-from-tuple [tuple prop]
-  (get tuple (prop->index prop)))
-
 (defn tuple-key-fn [idxs]
   (if (== (count idxs) 1)
     (let [idx (first idxs)]
@@ -218,10 +212,10 @@
 (defn lookup-pattern-db [db pattern callback]
   ;; TODO optimize with bound attrs min/max values here
   (let [search-pattern (mapv #(if (symbol? %) nil %) pattern)
-        attr->prop     (->> (map vector pattern ["e" "a" "v"])
-                            (filter (fn [[s _]] (free-var? s)))
-                            (into {}))]
-    (dc/-search db search-pattern (fn [datoms] (callback (Relation. attr->prop datoms))))))
+        attr->idx  (->> (map vector pattern (range))
+                        (filter (fn [[s _]] (free-var? s)))
+                        (into {}))]
+    (dc/-search db search-pattern (fn [datoms] (callback (Relation. attr->idx datoms))))))
 
 (defn matches-pattern? [pattern tuple]
   (loop [tuple   tuple
@@ -461,7 +455,7 @@
                          t2 (:tuples rel)]
                      (let [res (aclone t1)]
                        (dotimes [i len]
-                         (when-let [idx (prop->index (aget copy-map i))]
+                         (when-let [idx (aget copy-map i)]
                            (aset res i (nth t2 idx))))
                        res))
                    (next rels)
