@@ -59,28 +59,20 @@
                        ["Petr" "Ivan"]}))) db)
     ))
 
-;(deftest test-q-coll
-;  (let [db [ [1 :name "Ivan"]
-;             [1 :age  19]
-;             [1 :aka  "dragon_killer_94"]
-;             [1 :aka  "-=autobot=-"] ] ]
-;    (is (= (d/q '[ :find  ?n ?a
-;                   :where [?e :aka "dragon_killer_94"]
-;                          [?e :name ?n]
-;                          [?e :age  ?a]] db)
-;           #{["Ivan" 19]})))
-;
-;  (testing "Query over long tuples"
-;    (let [db [ [1 :name "Ivan" 945 :db/add]
-;               [1 :age  39     999 :db/retract]] ]
-;      (is (= (d/q '[ :find  ?e ?v
-;                     :where [?e :name ?v]] db)
-;             #{[1 "Ivan"]}))
-;      (is (= (d/q '[ :find  ?e ?a ?v ?t
-;                     :where [?e ?a ?v ?t :db/retract]] db)
-;             #{[1 :age 39 999]})))))
-;
-;
+(deftest test-q-coll
+  (let [db (-> (dc/init-db)
+               (dc/add-record 1 "name" "Ivan")
+               (dc/add-record 1 "age" 19)
+               (dc/add-record 1 "aka" "dragon_killer_94")
+               (dc/add-record 1 "aka" "-=autobot=-")
+            )]
+    (d/q '[:find  ?n ?a
+           :where [?e "aka" "dragon_killer_94"]
+                  [?e "name" ?n]
+                  [?e "age"  ?a]] (fn [result]
+      (is (= result #{["Ivan" 19]}))) db)
+    ))
+
 ;(deftest test-q-in
 ;  (let [db (-> (d/empty-db)
 ;               (d/db-with [ { :db/id 1, :name  "Ivan", :age   15 }
