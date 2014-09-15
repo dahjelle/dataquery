@@ -5,7 +5,7 @@
 (defprotocol ISearch
   (-search [data pattern callback])
   (add-record [data e a v])
-  (slice-it [data index search callback]))
+  (from-index [data index search callback]))
 
 (defrecord DB [eav aev ave]
   Object
@@ -15,13 +15,13 @@
   ISearch
   (-search [db [e a v] callback]
     (case-tree [e a (some? v)] [
-      (slice-it db "eav" [e a v] callback)           ;; e a v
-      (slice-it db "eav" [e a nil] callback)         ;; e a _
-      (slice-it db "eav" [e nil nil] (fn [data]
+      (from-index db "eav" [e a v] callback)         ;; e a v
+      (from-index db "eav" [e a nil] callback)       ;; e a _
+      (from-index db "eav" [e nil nil] (fn [data]
         (callback (filter #(= v (.-v %)) data))))    ;; e _ v
-      (slice-it db "eav" [e nil nil] callback)       ;; e _ _
-      (slice-it db "ave" [a v nil] callback)         ;; _ a v
-      (slice-it db "ave" [a nil nil] callback)       ;; _ a _
+      (from-index db "eav" [e nil nil] callback)     ;; e _ _
+      (from-index db "ave" [a v nil] callback)       ;; _ a v
+      (from-index db "ave" [a nil nil] callback)     ;; _ a _
       (callback (filter #(= v (.-v %)) eav))         ;; _ _ v
       (callback "eav")]))                            ;; _ _ _
   (add-record [_ e a v]
@@ -29,7 +29,7 @@
       (assoc eav (mapv str [e a v]) (to-array [e a v]))
       (assoc aev (mapv str [a e v]) (to-array [e a v]))
       (assoc ave (mapv str [a v e]) (to-array [e a v]))))
-  (slice-it [db index search callback]
+  (from-index [db index search callback]
     (callback (let [search-start search
                     search-stop  (mapv #(if (nil? %) "\uffff" %) search)
                     index        ((keyword index) db)]
