@@ -25,54 +25,40 @@
           :where  [?e "name" "Ivan"]
                   [?e "age" ?v]] (fn [result]
                          (is (= result #{[1 15] [3 37]}))) db)
+    (d/q '[:find  ?e1 ?e2
+          :where  [?e1 "name" ?n]
+                  [?e2 "name" ?n]] (fn [result]
+                         (is (= result #{[1 1] [2 2] [3 3] [1 3] [3 1]}))) db)
+    (d/q '[:find  ?e ?e2 ?n
+          :where [?e "name" "Ivan"]
+                 [?e "age" ?a]
+                 [?e2 "age" ?a]
+                 [?e2 "name" ?n]] (fn [result]
+                         (is (= result #{[1 1 "Ivan"]
+                                         [3 3 "Ivan"]
+                                         [3 2 "Petr"]}))) db)
     ))
 
-;(deftest test-joins
-;  (let [db (-> (d/empty-db)
-;               (d/db-with [ { :db/id 1, :name  "Ivan", :age   15 }
-;                            { :db/id 2, :name  "Petr", :age   37 }
-;                            { :db/id 3, :name  "Ivan", :age   37 }
-;                            { :db/id 4, :age 15 }]))]
-;    (is (= (d/q '[:find ?e
-;                  :where [?e :name]] db)
-;           #{[1] [2] [3]}))
-;    (is (= (d/q '[:find  ?e ?v
-;                  :where [?e :name "Ivan"]
-;                         [?e :age ?v]] db)
-;           #{[1 15] [3 37]}))
-;    (is (= (d/q '[:find  ?e1 ?e2
-;                  :where [?e1 :name ?n]
-;                         [?e2 :name ?n]] db)
-;           #{[1 1] [2 2] [3 3] [1 3] [3 1]}))
-;    (is (= (d/q '[:find  ?e ?e2 ?n
-;                  :where [?e :name "Ivan"]
-;                         [?e :age ?a]
-;                         [?e2 :age ?a]
-;                         [?e2 :name ?n]] db)
-;           #{[1 1 "Ivan"]
-;             [3 3 "Ivan"]
-;             [3 2 "Petr"]}))))
-;
-;
-;(deftest test-q-many
-;  (let [db (-> (d/empty-db {:aka {:db/cardinality :db.cardinality/many}})
-;               (d/db-with [ [:db/add 1 :name "Ivan"]
-;                            [:db/add 1 :aka  "ivolga"]
-;                            [:db/add 1 :aka  "pi"]
-;                            [:db/add 2 :name "Petr"]
-;                            [:db/add 2 :aka  "porosenok"]
-;                            [:db/add 2 :aka  "pi"] ]))]
-;    (is (= (d/q '[:find  ?n1 ?n2
-;                  :where [?e1 :aka ?x]
-;                         [?e2 :aka ?x]
-;                         [?e1 :name ?n1]
-;                         [?e2 :name ?n2]] db)
-;           #{["Ivan" "Ivan"]
-;             ["Petr" "Petr"]
-;             ["Ivan" "Petr"]
-;             ["Petr" "Ivan"]}))))
-;
-;
+(deftest test-q-many
+  (let [db (-> (dc/init-db)
+               (dc/add-record 1 "name" "Ivan")
+               (dc/add-record 1 "aka" "ivolga")
+               (dc/add-record 1 "aka" "pi")
+               (dc/add-record 2 "name" "Petr")
+               (dc/add-record 2 "aka" "porosenok")
+               (dc/add-record 2 "aka" "pi")
+            )]
+    (d/q '[:find  ?n1 ?n2
+          :where [?e1 "aka" ?x]
+                 [?e2 "aka" ?x]
+                 [?e1 "name" ?n1]
+                 [?e2 "name" ?n2]] (fn [result]
+      (is (= result #{["Ivan" "Ivan"]
+                       ["Petr" "Petr"]
+                       ["Ivan" "Petr"]
+                       ["Petr" "Ivan"]}))) db)
+    ))
+
 ;(deftest test-q-coll
 ;  (let [db [ [1 :name "Ivan"]
 ;             [1 :age  19]
