@@ -1,8 +1,6 @@
 (ns datascript.js
   (:require
     [datascript :as d]
-    [datascript.core :as dc]
-    [clojure.walk :as walk]
     [cljs.reader]))
 
 ;; Public API

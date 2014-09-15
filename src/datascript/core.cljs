@@ -2,29 +2,6 @@
   (:require-macros
     [datascript :refer [combine-cmp case-tree]]))
 
-(defrecord Datom [e a v tx added]
-  Object
-  (toString [this]
-    (pr-str this)))
-
-(extend-type Datom
-  IHash
-  (-hash [d] (or (.-__hash d)
-                 (set! (.-__hash d)
-                       (-> (hash (.-e d))
-                           (hash-combine (hash (.-a d)))
-                           (hash-combine (hash (.-v d)))))))
-  IEquiv
-  (-equiv [d o] (and (= (.-e d) (.-e o))
-                     (= (.-a d) (.-a o))
-                     (= (.-v d) (.-v o))))
-
-  ISeqable
-  (-seq [d] (list (.-e d) (.-a d) (.-v d) (.-tx d) (.-added d))))
-
-;;;;;;;;;; Searching
-
-
 (defprotocol ISearch
   (-search [data pattern callback])
   (add-record [data e a v])
