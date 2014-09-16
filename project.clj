@@ -42,11 +42,12 @@
             :source-paths ["src" "test"]
             :compiler {
               :output-to     "web/datascript.testable.js"
-              :optimizations :whitespace
+              :optimizations :simple ; needs to be :simple or :advanced for Node tests
             }}
         ]
         :test-commands {
-          "test.datascript"    [ "phantomjs" :runner "web/datascript.testable.js" ]
+          ;"test.datascript"    [ "phantomjs" :runner "web/datascript.testable.js" ]
+          "test.datascript"    [ "node" :node-runner "web/datascript.testable.js" ]
         }
       }
     }
