@@ -417,14 +417,14 @@
 (defn -resolve-clause [context clause callback]
   (condp looks-like? clause
     '[[*]] ;; predicate [(pred ?a ?b ?c)]
-      (callback (filter-by-pred context clause))
+      (callback (filter-by-pred @context clause))
 
     '[[*] _] ;; function [(fn ?a ?b) ?res]
-      (callback (bind-by-fn context clause))
+      (callback (bind-by-fn @context clause))
 
     '[*] ;; pattern
-      (lookup-pattern context clause (fn [datoms]
-        (callback (update-in context [:rels] collapse-rels datoms))))))
+      (lookup-pattern @context clause (fn [datoms]
+        (callback (update-in @context [:rels] collapse-rels datoms))))))
 
 ;TODO not really sure it is valid to replace all these context's with @context's, but it seems to work
 (defn resolve-clause [context clause callback]
@@ -435,7 +435,7 @@
           source (get-in @context [:sources source])]
       (solve-rule (assoc @context :sources {'$ source}) rule (fn [rel]
         (callback (update-in @context [:rels] collapse-rels rel)))))
-    (-resolve-clause @context clause callback)))
+    (-resolve-clause context clause callback)))
 
 (defn -q [context clauses callback]
   (async-reduce resolve-clause context clauses callback))
