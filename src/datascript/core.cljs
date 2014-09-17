@@ -21,6 +21,4 @@
       (search-ave [a v nil] callback)                ;; _ a v
       (search-ave [a nil nil] callback)              ;; _ a _
       (callback (filter #(= v (.-v %)) "eav"))       ;; _ _ v FIXME!
-      (callback "eav")]))                            ;; _ _ _ FIXME!
-)
-
+      (callback "eav")])))                           ;; _ _ _ FIXME!
