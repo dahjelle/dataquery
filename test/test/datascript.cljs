@@ -1,6 +1,6 @@
 (ns test.datascript
   (:require-macros
-    [cemerick.cljs.test :refer (is deftest with-test run-tests testing test-var)])
+    [cemerick.cljs.test :refer (is deftest with-test run-tests testing test-var done)])
   (:require
     [datascript.core :as dc]
     [datascript :as d]
@@ -30,6 +30,37 @@
     (dc/DB. (hash-map :eav eav :ave ave)
          (search-index eav)
          (search-index ave))))
+
+(defn search-pouch-index [pouch index]
+  (fn [search callback]
+    (.query
+      pouch
+      (str index "/" index)
+      #js {
+        :startkey (to-array search)
+        :endkey   (to-array (mapv #(if (nil? %) #js {} %) search))
+      }
+      (fn [error data]
+        (let [data (map #(to-array (get % "value")) (get (js->clj data) "rows"))]
+          (callback data))))))
+
+(defn init-pouch-db []
+  (let [PouchDB (-> (str (.cwd js/process) "/node_modules/icon-crdt-db")
+                (js/require))
+        crdt-db (PouchDB "large" "http://test:test@localhost:5984" false)]
+    (dc/DB. crdt-db (search-pouch-index crdt-db "eav") (search-pouch-index crdt-db "ave"))))
+
+(deftest ^:async pouch
+  (let [db (init-pouch-db)]
+    (println (new js/Date))
+    (d/q '[:find ?id
+          :in
+          :where [?id "last_name" "benson"]] (fn [result]
+            (println "query result:" result)
+            (is (= result #{["h-J3zsqvJU"] ["h-KNsH97zd"] ["h-KYgWG520"] ["h-okf5vK7R"] ["h-PMx7u50O"] ["h-QHXBZ9vr"]}))
+            (println (new js/Date))
+            (done))
+          db)))
 
 (deftest test-joins
   (let [db (-> (init-db)
