@@ -48,6 +48,7 @@
         :test-commands {
           ;"test.datascript"    [ "phantomjs" :runner "web/datascript.testable.js" ]
           "test.datascript"    [ "node" :node-runner "web/datascript.testable.js" ]
+          ;"test.datascript.js" [ "node" "test/js/index.js" ] ; requires a specific CouchDB database to pass
         }
       }
     }
