@@ -24,25 +24,3 @@
       (callback "eav")]))                            ;; _ _ _ FIXME!
 )
 
-(defn search-index [index]
-  (fn [search callback]
-    (callback (let [search-start search
-                    search-stop  (mapv #(if (nil? %) "\uffff" %) search)]
-      (vec (vals (subseq index >= search-start <= search-stop)))))))
-
-(defn add-record [db e a v]
-  (let [record    (to-array [e a v])
-        indexes   (:db db)
-        ave       (assoc (:ave indexes) (mapv str [a v e]) record)
-        eav       (assoc (:eav indexes) (mapv str [e a v]) record)]
-    (DB. (hash-map :eav eav :ave ave)
-         (search-index eav)
-         (search-index ave))))
-
-(defn init-db []
-  (let [ave          (sorted-map)
-        eav          (sorted-map)]
-    (DB. (hash-map :eav eav :ave ave)
-         (search-index eav)
-         (search-index ave))))
-

@@ -9,15 +9,37 @@
 
 (enable-console-print!)
 
+(defn search-index [index]
+  (fn [search callback]
+    (callback (let [search-start search
+                    search-stop  (mapv #(if (nil? %) "\uffff" %) search)]
+      (vec (vals (subseq index >= search-start <= search-stop)))))))
+
+(defn add-record [db e a v]
+  (let [record    (to-array [e a v])
+        indexes   (:db db)
+        ave       (assoc (:ave indexes) (mapv str [a v e]) record)
+        eav       (assoc (:eav indexes) (mapv str [e a v]) record)]
+    (dc/DB. (hash-map :eav eav :ave ave)
+         (search-index eav)
+         (search-index ave))))
+
+(defn init-db []
+  (let [ave          (sorted-map)
+        eav          (sorted-map)]
+    (dc/DB. (hash-map :eav eav :ave ave)
+         (search-index eav)
+         (search-index ave))))
+
 (deftest test-joins
-  (let [db (-> (dc/init-db)
-               (dc/add-record 1 "name" "Ivan")
-               (dc/add-record 2 "name" "Petr")
-               (dc/add-record 3 "name" "Ivan")
-               (dc/add-record 1 "age" 15)
-               (dc/add-record 2 "age" 37)
-               (dc/add-record 3 "age" 37)
-               (dc/add-record 4 "age" 15))]
+  (let [db (-> (init-db)
+               (add-record 1 "name" "Ivan")
+               (add-record 2 "name" "Petr")
+               (add-record 3 "name" "Ivan")
+               (add-record 1 "age" 15)
+               (add-record 2 "age" 37)
+               (add-record 3 "age" 37)
+               (add-record 4 "age" 15))]
     (d/q '[:find ?w
           :where [?w "name"]] (fn [result]
                                 (is (= result #{[1] [2] [3]}))) db)
@@ -40,13 +62,13 @@
     ))
 
 (deftest test-q-many
-  (let [db (-> (dc/init-db)
-               (dc/add-record 1 "name" "Ivan")
-               (dc/add-record 1 "aka" "ivolga")
-               (dc/add-record 1 "aka" "pi")
-               (dc/add-record 2 "name" "Petr")
-               (dc/add-record 2 "aka" "porosenok")
-               (dc/add-record 2 "aka" "pi")
+  (let [db (-> (init-db)
+               (add-record 1 "name" "Ivan")
+               (add-record 1 "aka" "ivolga")
+               (add-record 1 "aka" "pi")
+               (add-record 2 "name" "Petr")
+               (add-record 2 "aka" "porosenok")
+               (add-record 2 "aka" "pi")
             )]
     (d/q '[:find  ?n1 ?n2
           :where [?e1 "aka" ?x]
@@ -60,11 +82,11 @@
     ))
 
 (deftest test-q-coll
-  (let [db (-> (dc/init-db)
-               (dc/add-record 1 "name" "Ivan")
-               (dc/add-record 1 "age" 19)
-               (dc/add-record 1 "aka" "dragon_killer_94")
-               (dc/add-record 1 "aka" "-=autobot=-")
+  (let [db (-> (init-db)
+               (add-record 1 "name" "Ivan")
+               (add-record 1 "age" 19)
+               (add-record 1 "aka" "dragon_killer_94")
+               (add-record 1 "aka" "-=autobot=-")
             )]
     (d/q '[:find  ?n ?a
            :where [?e "aka" "dragon_killer_94"]
