@@ -1,7 +1,9 @@
 /**
- * Datascript v0.4.0
+ * Dataquery v0.1.0
+ * Copyright 2014 David Alan Hjelle & Icon Systems, Inc.
  *
- * Copyright 2014 Nikita Prokopov
+ * Query Engine originally from Datascript v0.4.0 <https://github.com/tonsky/datascript>
+ * which is Copyright 2014 Nikita Prokopov
  *
  * Licensed under Eclipse Public License;
  * you may not use this file except in compliance with the License.

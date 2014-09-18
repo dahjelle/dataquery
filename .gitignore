@@ -10,3 +10,4 @@ pom.xml.asc
 web/out
 web/*.js
 perf
+node_modules

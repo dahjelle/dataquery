@@ -1,3 +1,7 @@
+# Dataquery v 0.1.0
+
+Forked project and renamed to "dataquery". Changed to allow for asynchronous queries and external indexes. Removed all local storage capacity.
+
 # 0.4.0
 
 Cosmetic changes to better mimic Datomic API. Useful for sharing code between Datomic and DataScript:

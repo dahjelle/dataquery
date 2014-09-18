@@ -1,14 +1,14 @@
-(defproject datascript "0.4.0"
-  :description "An implementation of Datomic in-memory database and Datalog query engine in ClojureScript"
+(defproject dataquery "0.1.0"
+  :description "An implementation of the datalog query language with user-provided indexes."
   :license {:name "Eclipse"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :url "https://github.com/tonsky/datascript"
-  
+  :url "https://github.com/dahjelle/dataquery"
+
   :dependencies [
     [org.clojure/clojure "1.6.0"]
-    [org.clojure/clojurescript "0.0-2311"]
+    [org.clojure/clojurescript "0.0-2341"]
   ]
-  :cljsbuild { 
+  :cljsbuild {
     :builds [
       { :id "release"
         :source-paths ["src"]
@@ -17,7 +17,6 @@
           :output-to     "web/datascript.min.js"
           :optimizations :advanced
           :pretty-print  false
-          :externs       ["src/datascript/externs.js"]
           :preamble      ["datascript/preamble.js"]
           :elide-asserts true
         }}
@@ -29,7 +28,7 @@
         [lein-cljsbuild "1.0.3"]
         [com.cemerick/clojurescript.test "0.3.1"]
       ]
-      :cljsbuild { 
+      :cljsbuild {
         :builds [
           { :id "dev"
             :source-paths ["src" "test"]
@@ -43,12 +42,13 @@
             :source-paths ["src" "test"]
             :compiler {
               :output-to     "web/datascript.testable.js"
-              :optimizations :whitespace
+              :optimizations :simple ; needs to be :simple or :advanced for Node tests
             }}
         ]
         :test-commands {
-          "test.datascript"    [ "phantomjs" :runner "web/datascript.testable.js" ]
-          "test.datascript.js" [ "phantomjs" "test/js/js.js" ]
+          ;"test.datascript"    [ "phantomjs" :runner "web/datascript.testable.js" ]
+          "test.datascript"    [ "node" :node-runner "web/datascript.testable.js" ]
+          ;"test.datascript.js" [ "node" "test/js/index.js" ] ; requires a specific CouchDB database to pass
         }
       }
     }

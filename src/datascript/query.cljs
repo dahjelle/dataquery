@@ -2,9 +2,7 @@
   (:require
     [clojure.set :as set]
     [clojure.walk :as walk]
-    [datascript.core :as dc]
-    [datascript.impl.entity :as de]))
-
+    [datascript.core :as dc]))
 
 ;; Records
 
@@ -18,6 +16,17 @@
 
 
 ;; Utilities
+(enable-console-print!)
+
+(defn async-reduce [reducer-function initial-value collection callback]
+  (let [accumulator (atom initial-value)
+        items-processed (atom 0)]
+    (doseq [item collection]
+      (reducer-function accumulator item (fn [result]
+                                            (swap! accumulator (fn [] result)) ; cheating a bit in the update function
+                                            (swap! items-processed inc)
+                                            (if (= @items-processed (count collection))
+                                              (callback @accumulator)))))))
 
 (defn intersect-keys [attrs1 attrs2]
   (set/intersection (set (keys attrs1))
@@ -82,31 +91,12 @@
   (let [l (count xs)]
     (not= (take (/ l 2) xs) (drop (/ l 2) xs))))
 
-(defn- -get-else
-  [db e a else-val]
-  (if-let [datom (first (dc/-search db [e a]))]
-    (.-v datom)
-    else-val))
-
-(defn- -get-some
-  [db e & as]
-  (reduce
-   (fn [_ a]
-     (when-let [datom (first (dc/-search db [e a]))]
-       (reduced (.-v datom))))
-   nil
-   as))
-
-(defn- -missing?
-  [db e a]
-  (nil? (get (de/entity db e) a)))
-
 (def built-ins {
   '= =, '== ==, 'not= not=, '!= not=, '< <, '> >, '<= <=, '>= >=, '+ +, '- -,
   '* *, '/ /, 'quot quot, 'rem rem, 'mod mod, 'inc inc, 'dec dec, 'max max, 'min min,
   'zero? zero?, 'pos? pos?, 'neg? neg?, 'even? even?, 'odd? odd?, 'true? true?,
   'false? false?, 'nil? nil?, 'str str, 'identity identity, 'vector vector,
-  '-differ? -differ?, 'get-else -get-else, 'get-some -get-some, 'missing? -missing?})
+  '-differ? -differ?})
 
 (def built-in-aggregates {
   'distinct (comp vec distinct)
@@ -219,14 +209,13 @@
     (Relation. (zipmap (concat keep-attrs1 keep-attrs2) (range))
                new-tuples)))
 
-(defn lookup-pattern-db [db pattern]
+(defn lookup-pattern-db [db pattern callback]
   ;; TODO optimize with bound attrs min/max values here
   (let [search-pattern (mapv #(if (symbol? %) nil %) pattern)
-        datoms         (dc/-search db search-pattern)
-        attr->prop     (->> (map vector pattern ["e" "a" "v" "tx"])
-                            (filter (fn [[s _]] (free-var? s)))
-                            (into {}))]
-    (Relation. attr->prop datoms)))
+        attr->idx  (->> (map vector pattern (range))
+                        (filter (fn [[s _]] (free-var? s)))
+                        (into {}))]
+    (dc/-search db search-pattern (fn [datoms] (callback (Relation. attr->idx datoms))))))
 
 (defn matches-pattern? [pattern tuple]
   (loop [tuple   tuple
@@ -239,23 +228,23 @@
           false))
       true)))
 
-(defn lookup-pattern-coll [coll pattern]
+(defn lookup-pattern-coll [coll pattern callback]
   (let [data       (filter #(matches-pattern? pattern %) coll)
         attr->idx  (->> (map vector pattern (range))
                         (filter (fn [[s _]] (free-var? s)))
                         (into {}))]
-    (Relation. attr->idx (map to-array data)))) ;; FIXME to-array
+    (callback (Relation. attr->idx (map to-array data))))) ;; FIXME to-array
 
-(defn lookup-pattern [context clause]
+(defn lookup-pattern [context clause callback]
   (let [[source-sym pattern] (if (source? (first clause))
                                [(first clause) (next clause)]
                                ['$ clause])
         source   (get (:sources context) source-sym)]
     (cond
       (instance? dc/DB source)
-        (lookup-pattern-db source pattern)
+        (lookup-pattern-db source pattern callback)
       :else
-        (lookup-pattern-coll source pattern))))
+        (lookup-pattern-coll source pattern callback))))
 
 (defn collapse-rels [rels new-rel]
   (loop [rels    rels
@@ -368,29 +357,23 @@
     [(filter pred guards)
      (remove pred guards)]))
 
-(defn solve-rule [context clause]
+(defn solve-rule [context clause callback]
   (let [final-attrs     (filter free-var? clause)
         final-attrs-map (zipmap final-attrs (range))
-;;         clause-cache    (atom {}) ;; TODO
-        solve           (fn [prefix-context clauses]
-                          (reduce -resolve-clause prefix-context clauses))
+        solve           (fn [prefix-context clauses callback]
+                          (async-reduce -resolve-clause prefix-context clauses callback))
         empty-rels?     (fn [context]
                           (some #(empty? (:tuples %)) (:rels context)))]
-    (loop [stack (list {:prefix-clauses []
-                        :prefix-context (assoc context :rels [])
-                        :clauses        [clause]
-                        :used-args      {}
-                        :pending-guards {}})
-           rel   (Relation. final-attrs-map [])]
+    ((defn looper [stack rel callback] ; looper is a terrible name, but replacing the use of recur so can use callbacks
       (if-let [frame (first stack)]
         (let [[clauses [rule-clause & next-clauses]] (split-with #(not (rule? context %)) (:clauses frame))]
           (if (nil? rule-clause)
 
             ;; no rules --> expand, collect, sum
-            (let [context (solve (:prefix-context frame) clauses)
-                  tuples  (-collect context final-attrs)
-                  new-rel (Relation. final-attrs-map tuples)]
-              (recur (next stack) (sum-rel rel new-rel)))
+            (solve (:prefix-context frame) clauses (fn [context]
+               (let [tuples  (-collect context final-attrs)
+                     new-rel (Relation. final-attrs-map tuples)]
+                 (looper (next stack) (sum-rel rel new-rel) callback))))
 
             ;; has rule --> add guards --> check if dead --> expand rule --> push to stack, recur
             (let [[rule & call-args]     rule-clause
@@ -400,54 +383,62 @@
               (if (some #(= % '[(-differ?)]) active-gs) ;; trivial always false case like [(not= [?a ?b] [?a ?b])]
 
                 ;; this branch has no data, just drop it from stack
-                (recur (next stack) rel)
+                (looper (next stack) rel callback)
 
-                (let [prefix-clauses (concat clauses active-gs)
-                      prefix-context (solve (:prefix-context frame) prefix-clauses)]
-                  (if (empty-rels? prefix-context)
+                (let [prefix-clauses (concat clauses active-gs)]
+                  (solve (:prefix-context frame) prefix-clauses (fn [prefix-context]
+                    (if (empty-rels? prefix-context)
 
-                    ;; this branch has no data, just drop it from stack
-                    (recur (next stack) rel)
+                      ;; this branch has no data, just drop it from stack
+                      (looper (next stack) rel callback)
 
-                    ;; need to expand rule to branches
-                    (let [used-args  (assoc (:used-args frame) rule
-                                       (conj (get (:used-args frame) rule []) call-args))
-                          branches   (expand-rule rule-clause context used-args)]
-                      (recur (concat
-                               (for [branch branches]
-                                 {:prefix-clauses prefix-clauses
-                                  :prefix-context prefix-context
-                                  :clauses        (concatv branch next-clauses)
-                                  :used-args      used-args
-                                  :pending-guards pending-gs})
-                               (next stack))
-                             rel))))))))
-        rel))))
+                      ;; need to expand rule to branches
+                      (let [used-args  (assoc (:used-args frame) rule
+                                         (conj (get (:used-args frame) rule []) call-args))
+                            branches   (expand-rule rule-clause context used-args)]
+                        (looper (concat
+                                 (for [branch branches]
+                                   {:prefix-clauses prefix-clauses
+                                    :prefix-context prefix-context
+                                    :clauses        (concatv branch next-clauses)
+                                    :used-args      used-args
+                                    :pending-guards pending-gs})
+                                 (next stack))
+                               rel callback))))))))))
+        (callback rel)))
+      (list {:prefix-clauses []
+                              :prefix-context (assoc context :rels [])
+                              :clauses        [clause]
+                              :used-args      {}
+                              :pending-guards {}})
+      (Relation. final-attrs-map [])
+      callback)))
 
-(defn -resolve-clause [context clause]
+(defn -resolve-clause [context clause callback]
   (condp looks-like? clause
     '[[*]] ;; predicate [(pred ?a ?b ?c)]
-      (filter-by-pred context clause)
+      (callback (filter-by-pred @context clause))
 
     '[[*] _] ;; function [(fn ?a ?b) ?res]
-      (bind-by-fn context clause)
+      (callback (bind-by-fn @context clause))
 
     '[*] ;; pattern
-      (let [relation (lookup-pattern context clause)]
-        (update-in context [:rels] collapse-rels relation))))
+      (lookup-pattern @context clause (fn [datoms]
+        (callback (update-in @context [:rels] collapse-rels datoms))))))
 
-(defn resolve-clause [context clause]
-  (if (rule? context clause)
+;TODO not really sure it is valid to replace all these context's with @context's, but it seems to work
+(defn resolve-clause [context clause callback]
+  (if (rule? @context clause)
     (let [[source rule] (if (source? (first clause))
                           [(first clause) (next clause)]
                           ['$ clause])
-          source (get-in context [:sources source])
-          rel    (solve-rule (assoc context :sources {'$ source}) rule)]
-      (update-in context [:rels] collapse-rels rel))
-    (-resolve-clause context clause)))
+          source (get-in @context [:sources source])]
+      (solve-rule (assoc @context :sources {'$ source}) rule (fn [rel]
+        (callback (update-in @context [:rels] collapse-rels rel)))))
+    (-resolve-clause context clause callback)))
 
-(defn -q [context clauses]
-  (reduce resolve-clause context clauses))
+(defn -q [context clauses callback]
+  (async-reduce resolve-clause context clauses callback))
 
 (defn -collect
   ([context symbols]
@@ -465,7 +456,7 @@
                      (let [res (aclone t1)]
                        (dotimes [i len]
                          (when-let [idx (aget copy-map i)]
-                           (aset res i (aget t2 idx))))
+                           (aset res i (nth t2 idx))))
                        res))
                    (next rels)
                    symbols))))
@@ -513,18 +504,18 @@
         (recur (update-in parsed [key] (fnil conj []) q) key (next qs)))
       parsed)))
 
-(defn q [q & inputs]
+(defn q [q callback & inputs]
   (let [q         (if (sequential? q) (parse-query q) q)
         find      (find-attrs q)
         ins       (:in q '[$])
         wheres    (:where q)
         context   (-> (Context. [] {} {})
-                    (parse-ins ins inputs))
-        resultset (-> context
-                    (-q wheres)
-                    (collect find))]
-    (cond->> resultset
-      (:with q)
-        (mapv #(subvec % 0 (count (:find q))))
-      (not-empty (filter sequential? (:find q)))
-        (aggregate q context))))
+                        (parse-ins ins inputs))]
+        (-q context wheres (fn [data]
+                             (callback
+                               (let [resultset (collect data find)]
+                                 (cond->> resultset
+                                   (:with q)
+                                     (mapv #(subvec % 0 (count (:find q))))
+                                   (not-empty (filter sequential? (:find q)))
+                                     (aggregate q context))))))))
