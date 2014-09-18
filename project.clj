@@ -1,8 +1,8 @@
-(defproject datascript "0.4.0"
-  :description "An implementation of Datomic in-memory database and Datalog query engine in ClojureScript"
+(defproject dataquery "0.1.0"
+  :description "An implementation of the datalog query language with user-provided indexes."
   :license {:name "Eclipse"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :url "https://github.com/tonsky/datascript"
+  :url "https://github.com/dahjelle/dataquery"
 
   :dependencies [
     [org.clojure/clojure "1.6.0"]
