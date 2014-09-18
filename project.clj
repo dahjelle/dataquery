@@ -6,7 +6,7 @@
 
   :dependencies [
     [org.clojure/clojure "1.6.0"]
-    [org.clojure/clojurescript "0.0-2311"]
+    [org.clojure/clojurescript "0.0-2341"]
   ]
   :cljsbuild {
     :builds [
