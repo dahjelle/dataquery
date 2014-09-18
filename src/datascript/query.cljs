@@ -2,7 +2,8 @@
   (:require
     [clojure.set :as set]
     [clojure.walk :as walk]
-    [datascript.core :as dc]))
+    [datascript.core :as dc]
+    [cljs.reader]))
 
 ;; Records
 
