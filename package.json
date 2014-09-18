@@ -1,8 +1,8 @@
 {
   "name": "dataquery",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "An implementation of the datalog query language with user-provided indexes.",
-  "main": "web/out/datascript.min.js",
+  "main": "index.js",
   "directories": {
     "test": "test"
   },

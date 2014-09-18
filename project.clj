@@ -14,7 +14,7 @@
         :source-paths ["src"]
         :assert false
         :compiler {
-          :output-to     "web/datascript.min.js"
+          :output-to     "index.js"
           :optimizations :advanced
           :pretty-print  false
           :preamble      ["datascript/preamble.js"]
